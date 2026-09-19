@@ -1,0 +1,178 @@
+name: ecommerce-miniproject
+
+services:
+  mongo-user:
+    image: mongo:7
+    container_name: mongo-user
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: userdb
+    volumes:
+      - mongo-user-data:/data/db
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo-product:
+    image: mongo:7
+    container_name: mongo-product
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: productdb
+    volumes:
+      - mongo-product-data:/data/db
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo-order:
+    image: mongo:7
+    container_name: mongo-order
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: orderdb
+    volumes:
+      - mongo-order-data:/data/db
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build: ./services/user-service
+    container_name: user-service
+    restart: unless-stopped
+    command: npm run dev
+    environment:
+      PORT: 5001
+      MONGO_URI: mongodb://mongo-user:27017/userdb
+      JWT_SECRET: ${JWT_SECRET:-dev-insecure-jwt-secret-change-me}
+      JWT_EXPIRES_IN: 2h
+    ports:
+      - "5001:5001"
+    depends_on:
+      mongo-user:
+        condition: service_healthy
+    volumes:
+      - ./services/user-service/src:/app/src
+      - user-service-node-modules:/app/node_modules
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  product-service:
+    build: ./services/product-service
+    container_name: product-service
+    restart: unless-stopped
+    command: npm run dev
+    environment:
+      PORT: 5002
+      MONGO_URI: mongodb://mongo-product:27017/productdb
+    ports:
+      - "5002:5002"
+    depends_on:
+      mongo-product:
+        condition: service_healthy
+    volumes:
+      - ./services/product-service/src:/app/src
+      - product-service-node-modules:/app/node_modules
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  order-service:
+    build: ./services/order-service
+    container_name: order-service
+    restart: unless-stopped
+    command: npm run dev
+    environment:
+      PORT: 5003
+      MONGO_URI: mongodb://mongo-order:27017/orderdb
+      JWT_SECRET: ${JWT_SECRET:-dev-insecure-jwt-secret-change-me}
+    ports:
+      - "5003:5003"
+    depends_on:
+      mongo-order:
+        condition: service_healthy
+    volumes:
+      - ./services/order-service/src:/app/src
+      - order-service-node-modules:/app/node_modules
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5003/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    restart: unless-stopped
+    command: npm run dev
+    environment:
+      PORT: 5000
+      JWT_SECRET: ${JWT_SECRET:-dev-insecure-jwt-secret-change-me}
+    ports:
+      - "5000:5000"
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+    volumes:
+      - ./gateway/src:/app/src
+      - gateway-node-modules:/app/node_modules
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge
+
+volumes:
+  mongo-user-data:
+  mongo-product-data:
+  mongo-order-data:
+  user-service-node-modules:
+  product-service-node-modules:
+  order-service-node-modules:
+  gateway-node-modules:

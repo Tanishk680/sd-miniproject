@@ -1,0 +1,11 @@
+node_modules/
+.env
+*.log
+npm-debug.log*
+.DS_Store
+Feasibility Study_SSD_D12C_43&38.md
+Implementation-Advice.md
+implementation-log.md
+session-ses_f51f.md
+TODO.md
+SD-MINIPROJECT-REVIEW-1.md
