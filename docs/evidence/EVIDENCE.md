@@ -42,6 +42,7 @@ k6 run -e BASE_URL=http://localhost:5000 -e ADMIN_TOKEN=<token> \
 | 17 | `17-ratelimit-429-headers.txt` | 429 carries `Retry-After: 59`, `X-RateLimit-Limit: 5` | ok |
 | 18 | `18-reload-invalid-config-rejected.json` | Bad target → 400, previous routes kept, still serving 200 | fail-safe config |
 | 19 | `19-k6-summary.json` | 10 VUs × 45 s: 990 reqs, 0.00% fail, p95 1302 ms (< 2000 threshold: ok) | pass |
+| 20 | `20-secrets-manager-mocktest.txt` | Secrets Manager path via injected fake client (no AWS): JSON shape, plain-string, missing-key error, SDK-error propagation, cache-once, env precedence | 6/6 PASS |
 
 Notes:
 - The rate-limit demo (16–17) used a temporary `max: 5` + `POST /gateway/reload`; the
