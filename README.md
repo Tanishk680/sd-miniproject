@@ -61,7 +61,7 @@ Open http://localhost:3000 in your browser.
 - `GET /api/products/:id`
 
 ### Order Service
-- `POST /api/orders` — body `{ items: [{ productId, name, price, quantity }] }` (authenticated)
+- `POST /api/orders` — body `{ items: [{ productId, quantity }] }` (authenticated; name/price re-fetched from the product service, client values ignored)
 - `GET  /api/orders` — authenticated, own orders only
 - `GET  /api/orders/:id` — authenticated, own order only
 
