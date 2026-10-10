@@ -1,0 +1,1 @@
+{"ok":true,"error":null,"routes":[{"path":"/api/users","target":"http://user-service:5001","auth":false,"healthPath":"/health"},{"path":"/api/products","target":"http://product-service:5002","auth":false,"healthPath":"/health"},{"path":"/api/orders","target":"http://order-service:5003","auth":true,"healthPath":"/health"}]}

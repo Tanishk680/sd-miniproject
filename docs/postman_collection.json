@@ -5,7 +5,8 @@
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:5000" },
-    { "key": "token", "value": "" }
+    { "key": "token", "value": "" },
+    { "key": "adminToken", "value": "change-me-admin-token" }
   ],
   "item": [
     {
@@ -155,7 +156,33 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"items\":[{\"productId\":\"PRODUCT_ID_HERE\",\"name\":\"Test Product\",\"price\":9.99,\"quantity\":1}]}"
+              "raw": "{\"items\":[{\"productId\":\"PRODUCT_ID_HERE\",\"quantity\":1}]}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/orders", "host": ["{{baseUrl}}"], "path": ["api", "orders"] }
+          }
+        },
+        {
+          "name": "Create order (tampered price → catalog price applied)",
+          "description": "Server-side pricing: client name/price are ignored. Replace PRODUCT_ID_HERE with a real id; assert the stored price is the catalog price, not 1.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 with catalog price (tamper ignored)', () => { const o = pm.response.json().order; return pm.response.code === 201 && o.items[0].price !== 1 && o.totalAmount === o.items[0].price * o.items[0].quantity; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"items\":[{\"productId\":\"PRODUCT_ID_HERE\",\"name\":\"HACKED\",\"price\":1,\"quantity\":1}]}"
             },
             "url": { "raw": "{{baseUrl}}/api/orders", "host": ["{{baseUrl}}"], "path": ["api", "orders"] }
           }
@@ -200,6 +227,7 @@
           "name": "Status",
           "request": {
             "method": "GET",
+            "header": [{ "key": "X-Admin-Token", "value": "{{adminToken}}" }],
             "url": { "raw": "{{baseUrl}}/gateway/status", "host": ["{{baseUrl}}"], "path": ["gateway", "status"] }
           }
         },
@@ -207,6 +235,7 @@
           "name": "Metrics",
           "request": {
             "method": "GET",
+            "header": [{ "key": "X-Admin-Token", "value": "{{adminToken}}" }],
             "url": { "raw": "{{baseUrl}}/gateway/metrics", "host": ["{{baseUrl}}"], "path": ["gateway", "metrics"] }
           }
         },
@@ -214,6 +243,7 @@
           "name": "Reload config",
           "request": {
             "method": "POST",
+            "header": [{ "key": "X-Admin-Token", "value": "{{adminToken}}" }],
             "url": { "raw": "{{baseUrl}}/gateway/reload", "host": ["{{baseUrl}}"], "path": ["gateway", "reload"] }
           }
         }

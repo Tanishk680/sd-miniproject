@@ -2,6 +2,9 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 
 const BASE = __ENV.BASE_URL || 'http://localhost:5000';
+// Admin token for /gateway/* endpoints (required since gateway hardening).
+// Run with: k6 run -e ADMIN_TOKEN=<value> docs/load-test.js
+const ADMIN_TOKEN = __ENV.ADMIN_TOKEN || '';
 
 export const options = {
   stages: [
@@ -76,7 +79,8 @@ export default function () {
   const healthRes = http.get(`${BASE}/health`);
   check(healthRes, { 'health 200': (r) => r.status === 200 });
 
-  const statusRes = http.get(`${BASE}/gateway/status`);
+  const adminH = { headers: { 'X-Admin-Token': ADMIN_TOKEN } };
+  const statusRes = http.get(`${BASE}/gateway/status`, adminH);
   check(statusRes, { 'status 200': (r) => r.status === 200 });
 
   sleep(0.5);
