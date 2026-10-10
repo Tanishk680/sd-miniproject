@@ -1,6 +1,7 @@
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const logger = require('../utils/logger');
 const { getConfig } = require('../config/configLoader');
+const { findMatchingRoute } = require('../utils/routeMatcher');
 const healthChecker = require('./healthChecker');
 
 let proxyRegistry = [];
@@ -16,9 +17,12 @@ function clearProxies() {
 }
 
 function buildProxies() {
-  clearProxies();
-
   const config = getConfig();
+  // Build the new table first; only swap on success so a failed
+  // rebuild never leaves the gateway with an empty proxy table.
+  const nextRegistry = [];
+  const nextByRoute = new Map();
+
   for (const route of config.routes) {
     const proxy = createProxyMiddleware({
       target: route.target,
@@ -41,19 +45,32 @@ function buildProxies() {
       }
     });
 
-    proxyRegistry.push(proxy);
-    middlewareByRoute.set(route.path, proxy);
+    nextRegistry.push(proxy);
+    nextByRoute.set(route.path, proxy);
     logger.info(`Route registered: ${route.path} -> ${route.target}${route.auth ? ' [auth]' : ''}`);
+  }
+
+  // Atomic swap: retire old middlewares only after the new table is ready.
+  const oldRegistry = proxyRegistry;
+  proxyRegistry = nextRegistry;
+  middlewareByRoute = nextByRoute;
+  for (const mw of oldRegistry) {
+    if (typeof mw.close === 'function') {
+      try { mw.close(); } catch (_e) { /* ignore close errors on retire */ }
+    }
   }
 }
 
 function proxyMiddleware(req, res, next) {
   const config = getConfig();
-  const route = config.routes.find((r) => req.path.startsWith(r.path));
+  const route = findMatchingRoute(config.routes, req.path);
   if (!route) return next();
 
   const backend = healthChecker.findBackendByTarget(route.target);
-  if (backend && backend.status === 'UNHEALTHY') {
+  // Fail-closed readiness policy: only HEALTHY backends receive traffic.
+  // UNKNOWN (startup, no successful check yet) and UNHEALTHY both get 503.
+  // 502 remains reserved for a proxy/upstream error mid-request.
+  if (!backend || backend.status !== 'HEALTHY') {
     logger.warn('Rejecting request to unhealthy backend', {
       target: route.target,
       path: req.originalUrl

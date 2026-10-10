@@ -12,10 +12,17 @@ async function getJwtSecret() {
   }
 
   // AWS phase: retrieve the secret from AWS Secrets Manager here
-  // and cache it. Local phase falls back to the shared default.
-  logger.warn('JWT_SECRET env var missing; using insecure fallback');
+  // (IAM role + secretsmanager:GetSecretValue) and cache it.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET is required in production (or wire AWS Secrets Manager); refusing insecure fallback');
+  }
+  logger.warn('JWT_SECRET env var missing; using insecure development fallback');
   jwtSecret = 'dev-insecure-jwt-secret-change-me';
   return jwtSecret;
 }
 
-module.exports = { getJwtSecret };
+function resetJwtSecretCache() {
+  jwtSecret = null;
+}
+
+module.exports = { getJwtSecret, resetJwtSecretCache };

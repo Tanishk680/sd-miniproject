@@ -2,13 +2,14 @@ const jwt = require('jsonwebtoken');
 const logger = require('../utils/logger');
 const { getConfig } = require('../config/configLoader');
 const { getJwtSecret } = require('../services/secretManager');
+const { findMatchingRoute } = require('../utils/routeMatcher');
 
 function authenticateGateway() {
   return async function (req, res, next) {
     const config = getConfig();
     if (!config) return next();
 
-    const route = config.routes.find((r) => req.path.startsWith(r.path));
+    const route = findMatchingRoute(config.routes, req.path);
     if (!route || !route.auth) return next();
 
     const header = req.headers.authorization || '';

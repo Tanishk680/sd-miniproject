@@ -1,5 +1,6 @@
 const logger = require('../utils/logger');
 const { getConfig } = require('../config/configLoader');
+const { findMatchingRoute } = require('../utils/routeMatcher');
 
 class SlidingWindowRateLimiter {
   constructor(windowMs, max) {
@@ -51,7 +52,7 @@ function rateLimitMiddleware() {
     const config = getConfig();
     if (!config) return next();
 
-    const route = config.routes.find((r) => req.path.startsWith(r.path));
+    const route = findMatchingRoute(config.routes, req.path);
     const opts = (route && route.rateLimit) || config.rateLimit || { windowMs: 60000, max: 100 };
 
     const limiter = limiterFor(opts);

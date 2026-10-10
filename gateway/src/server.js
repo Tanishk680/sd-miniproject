@@ -6,12 +6,17 @@ const { loadConfig, getConfig, getLastConfigError, CONFIG_PATH, watch, reload } 
 const healthChecker = require('./services/healthChecker');
 const proxy = require('./services/proxy');
 const { authenticateGateway } = require('./middleware/auth');
+const { requireAdmin } = require('./middleware/adminAuth');
 const rateLimitMiddleware = require('./middleware/rateLimiter');
 const metrics = require('./middleware/metrics');
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 app.use((req, res, next) => {
   const started = Date.now();
@@ -31,7 +36,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'api-gateway', time: new Date().toISOString() });
 });
 
-app.get('/gateway/status', (req, res) => {
+app.get('/gateway/status', requireAdmin, (req, res) => {
   const config = getConfig();
   res.json({
     configPath: CONFIG_PATH,
@@ -43,7 +48,7 @@ app.get('/gateway/status', (req, res) => {
   });
 });
 
-app.post('/gateway/reload', (req, res) => {
+app.post('/gateway/reload', requireAdmin, (req, res) => {
   const result = reload(proxy.rebuild);
   res.status(result.ok ? 200 : 400).json({
     ok: result.ok,
@@ -52,7 +57,7 @@ app.post('/gateway/reload', (req, res) => {
   });
 });
 
-app.get('/gateway/metrics', (req, res) => {
+app.get('/gateway/metrics', requireAdmin, (req, res) => {
   res.json(metrics.metricsReport(healthChecker, getConfig));
 });
 
