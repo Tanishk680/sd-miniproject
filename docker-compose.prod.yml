@@ -1,0 +1,207 @@
+# Production / AWS-preview deployment for the e-commerce mini-project.
+#
+# Standalone file (NOT an override): `docker compose -f docker-compose.prod.yml up --build -d`
+#
+# Differences from the dev `docker-compose.yml`:
+# - No `command: npm run dev`, no `src` bind-mounts, no node_modules volumes.
+#   Containers run the baked image (`CMD ["npm", "start"]` / nginx) — the same
+#   artifact shape you would ship to EC2.
+# - Separate project `name:` + `*-prod` volumes, so prod data never touches dev data.
+# - No `container_name:` (Compose generates prefixed names; avoids clashes).
+# - Backends are internal-only (`expose`, no host ports). Only 5000/3000 published.
+# - MongoDB requires auth (root user init + credentialed URIs). Fresh prod
+#   volumes pick up the credentials on first boot.
+# - `NODE_ENV=production` enables fail-closed behavior in the gateway:
+#   missing JWT_SECRET throws instead of falling back; admin endpoints 403
+#   unless GATEWAY_ADMIN_TOKEN is configured.
+# - Required secrets fail fast via `${VAR:?message}` instead of insecure defaults.
+# - Light resource limits on app services.
+#
+# Required in `.env` (see `.env.example`): JWT_SECRET, GATEWAY_ADMIN_TOKEN,
+# MONGO_ROOT_USERNAME, MONGO_ROOT_PASSWORD, CORS_ORIGIN (optional), JWT_EXPIRES_IN (optional).
+
+name: ecommerce-miniproject-prod
+
+services:
+  mongo-user:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
+      MONGO_INITDB_DATABASE: userdb
+    volumes:
+      - mongo-user-data-prod:/data/db
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet -u \"$$MONGO_INITDB_ROOT_USERNAME\" -p \"$$MONGO_INITDB_ROOT_PASSWORD\" --eval \"db.adminCommand('ping').ok\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo-product:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
+      MONGO_INITDB_DATABASE: productdb
+    volumes:
+      - mongo-product-data-prod:/data/db
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet -u \"$$MONGO_INITDB_ROOT_USERNAME\" -p \"$$MONGO_INITDB_ROOT_PASSWORD\" --eval \"db.adminCommand('ping').ok\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo-order:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
+      MONGO_INITDB_DATABASE: orderdb
+    volumes:
+      - mongo-order-data-prod:/data/db
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet -u \"$$MONGO_INITDB_ROOT_USERNAME\" -p \"$$MONGO_INITDB_ROOT_PASSWORD\" --eval \"db.adminCommand('ping').ok\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build: ./services/user-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5001
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:?}:${MONGO_ROOT_PASSWORD:?}@mongo-user:27017/userdb?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-2h}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    expose:
+      - "5001"
+    depends_on:
+      mongo-user:
+        condition: service_healthy
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+
+  product-service:
+    build: ./services/product-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5002
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:?}:${MONGO_ROOT_PASSWORD:?}@mongo-product:27017/productdb?authSource=admin
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    expose:
+      - "5002"
+    depends_on:
+      mongo-product:
+        condition: service_healthy
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+
+  order-service:
+    build: ./services/order-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5003
+      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:?}:${MONGO_ROOT_PASSWORD:?}@mongo-order:27017/orderdb?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    expose:
+      - "5003"
+    depends_on:
+      mongo-order:
+        condition: service_healthy
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5003/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+
+  gateway:
+    build: ./gateway
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      GATEWAY_ADMIN_TOKEN: ${GATEWAY_ADMIN_TOKEN:?Set GATEWAY_ADMIN_TOKEN in .env}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    ports:
+      - "5000:5000"
+    depends_on:
+      - user-service
+      - product-service
+      - order-service
+    networks:
+      - app-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge
+
+volumes:
+  mongo-user-data-prod:
+  mongo-product-data-prod:
+  mongo-order-data-prod:
