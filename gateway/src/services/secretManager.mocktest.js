@@ -66,15 +66,25 @@ async function main() {
   assert.strictEqual(counter.calls, 1, 'expected exactly 1 SDK call');
   console.log('PASS 5: secret cached after first fetch');
 
-  // 6. Env precedence: JWT_SECRET set -> SDK never touched
+  // 6. AWS configured + env set -> SDK wins (EC2 shape: services use env,
+  // gateway proves the Secrets Manager path)
   scrubEnv();
   process.env.JWT_SECRET = 'from-env';
   process.env.AWS_JWT_SECRET_ID = 'prod/ecommerce/app';
   const counter2 = { calls: 0 };
-  setSecretsClientForTests(fakeClient(JSON.stringify({ JWT_SECRET: 'should-not-be-used' }), { counter: counter2 }));
+  setSecretsClientForTests(fakeClient(JSON.stringify({ JWT_SECRET: 'from-aws' }), { counter: counter2 }));
+  assert.strictEqual(await getJwtSecret(), 'from-aws');
+  assert.strictEqual(counter2.calls, 1, 'SDK should be used when AWS_JWT_SECRET_ID is set');
+  console.log('PASS 6: AWS_JWT_SECRET_ID takes precedence over env');
+
+  // 7. Env only (no AWS vars) -> SDK never touched
+  scrubEnv();
+  process.env.JWT_SECRET = 'from-env';
+  const counter3 = { calls: 0 };
+  setSecretsClientForTests(fakeClient(JSON.stringify({ JWT_SECRET: 'should-not-be-used' }), { counter: counter3 }));
   assert.strictEqual(await getJwtSecret(), 'from-env');
-  assert.strictEqual(counter2.calls, 0, 'SDK should not be called when env is set');
-  console.log('PASS 6: JWT_SECRET env takes precedence');
+  assert.strictEqual(counter3.calls, 0, 'SDK should not be called without AWS_JWT_SECRET_ID');
+  console.log('PASS 7: JWT_SECRET env used when AWS not configured');
 
   scrubEnv();
   console.log('ALL SECRET-MANAGER MOCK TESTS PASSED');

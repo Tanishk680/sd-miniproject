@@ -49,20 +49,22 @@ async function fetchJwtFromSecretsManager(secretId, region) {
 async function getJwtSecret() {
   if (jwtSecret) return jwtSecret;
 
-  const fromEnv = process.env.JWT_SECRET;
-  if (fromEnv) {
-    jwtSecret = fromEnv;
-    return jwtSecret;
-  }
-
-  // AWS path: IAM instance role supplies credentials via the SDK's
-  // default chain (no keys in code or config). Needs
-  // secretsmanager:GetSecretValue on the secret.
+  // AWS path first when configured: IAM instance role supplies credentials
+  // via the SDK's default chain (no keys in code or config). Needs
+  // secretsmanager:GetSecretValue on the secret. This lets the gateway prove
+  // the Secrets Manager integration on EC2 even while the secret is also
+  // present in .env for the backend services (which have no SDK path).
   const secretId = process.env.AWS_JWT_SECRET_ID;
   if (secretId) {
     const region = process.env.AWS_REGION || 'us-east-1';
     logger.info('Fetching JWT secret from AWS Secrets Manager', { secretId, region });
     jwtSecret = await fetchJwtFromSecretsManager(secretId, region);
+    return jwtSecret;
+  }
+
+  const fromEnv = process.env.JWT_SECRET;
+  if (fromEnv) {
+    jwtSecret = fromEnv;
     return jwtSecret;
   }
 
