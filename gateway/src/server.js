@@ -76,6 +76,18 @@ proxy.buildProxies();
 watch(proxy.rebuild);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  logger.info(`[api-gateway] listening on port ${PORT}`);
-});
+// Warm the JWT secret at boot: proves the Secrets Manager (or env) wiring
+// before serving traffic. A broken secret config crashes loudly here
+// instead of surfacing on the first authenticated request.
+const { getJwtSecret } = require('./services/secretManager');
+getJwtSecret().then(
+  () => {
+    app.listen(PORT, () => {
+      logger.info(`[api-gateway] listening on port ${PORT}`);
+    });
+  },
+  (err) => {
+    logger.error('Gateway startup failed: JWT secret unavailable', { error: err.message });
+    process.exit(1);
+  }
+);
