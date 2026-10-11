@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
+const { buildMongoUri } = require('./mongoUri');
 
 async function connectDB() {
-  const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/userdb';
+  const { uri, redacted } = buildMongoUri(process.env, 'userdb');
   try {
     await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
-    console.log(`[user-service] connected to MongoDB: ${uri}`);
+    console.log(`[user-service] connected to MongoDB: ${redacted}`);
   } catch (err) {
     console.error('[user-service] MongoDB connection failed:', err.message);
     process.exit(1);

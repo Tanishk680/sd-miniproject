@@ -80,7 +80,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5001
-      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:?}:${MONGO_ROOT_PASSWORD:?}@mongo-user:27017/userdb?authSource=admin
+      MONGO_URI: mongodb://mongo-user:27017/userdb?authSource=admin
+      MONGO_USER: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}
+      MONGO_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-2h}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
@@ -109,7 +111,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5002
-      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:?}:${MONGO_ROOT_PASSWORD:?}@mongo-product:27017/productdb?authSource=admin
+      MONGO_URI: mongodb://mongo-product:27017/productdb?authSource=admin
+      MONGO_USER: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}
+      MONGO_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
     expose:
       - "5002"
@@ -136,7 +140,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5003
-      MONGO_URI: mongodb://${MONGO_ROOT_USERNAME:?}:${MONGO_ROOT_PASSWORD:?}@mongo-order:27017/orderdb?authSource=admin
+      MONGO_URI: mongodb://mongo-order:27017/orderdb?authSource=admin
+      MONGO_USER: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in .env}
+      MONGO_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       PRODUCT_SERVICE_URL: http://product-service:5002
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
