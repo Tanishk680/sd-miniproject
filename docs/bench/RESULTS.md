@@ -49,7 +49,16 @@ Same catalog query, 6 samples each (first = cold):
 Steady-state medians both ≈ 10–15 ms — **L7 overhead (route match + auth skip on public
 route + proxy) is within measurement noise on loopback**. No overclaim: this bounds
 overhead at single-digit ms; it does not profile each middleware stage.
-EC2 layer-2 (same comparison on the box): pending — see "Box-side bundle" below.
+
+EC2 layer-2 (box-side, owner-run 2026-10-14, idle box):
+
+| Path | Samples (ms) |
+|---|---|
+| Direct: gateway container → `product-service:5002` | 167, 12, 8, 7, 6, 6 |
+| Via gateway: box → `localhost:5000` | 24.2, 5.8, 4.6, 5.1, 7.1, 4.9 |
+
+Same verdict on EC2 hardware (steady medians ≈ 5–8 ms both paths; first samples are
+cold-start/JIT). The gateway adds no measurable latency at this scale.
 
 ## Layer 3 — Failure timing (local)
 
@@ -84,9 +93,25 @@ Auth-write run (`local-auth-write-docker-stats.txt`):
 \* `mongo-order` 82% in the read run is a single-snapshot compaction/checkpoint spike
 (no order writes in that scenario); it sat at 33% in the write run. Single snapshots
 are indicative, not profiles. Node services sit ~60–105 MB — the 512 MB prod limits
-have ~5× headroom. EC2 layer-4: pending — see "Box-side bundle".
+have ~5× headroom.
 
-## Box-side bundle (run on EC2, paste outputs back)
+EC2 layer-4 (box-side idle snapshot, owner-run 2026-10-14 — baseline footprint, not
+under load; `t3.small` = 2 GB total):
+
+| Container | CPU% | MEM / LIMIT |
+|---|---|---|
+| gateway | 0.03 | 50 MB / 512 MB |
+| user / product / order-service | 0.09–0.10 | 48–57 MB / 512 MB |
+| mongo ×3 | 0.43–0.46 | 106–118 MB / 1.9 GB (unlimited) |
+| frontend | 0.00 | 3.8 MB |
+
+Idle total ≈ 430 MB of 2 GB — comfortable headroom, and the LIMIT column confirms the
+prod compose resource limits are enforced on EC2. Under-load EC2 profiling would need
+a coordinated k6 run; the local steady-state table above stands in for the shape.
+
+## Box-side bundle — COMPLETED 2026-10-14 (outputs above, EC2 synced to `4d652e6`)
+
+<details><summary>Original commands (for reproducibility)</summary>
 
 ```bash
 cd ~/miniproject
@@ -97,6 +122,8 @@ for i in 1 2 3 4 5 6; do curl -o /dev/null -s -w "%{time_total} %{http_code}\n" 
 docker compose -f docker-compose.prod.yml exec gateway env >/dev/null && docker stats --no-stream
 # L3 (optional): time 503s across a product-service stop/start like Layer 3 above
 ```
+
+</details>
 
 EC2 `mixed` was deliberately skipped remotely: it needs the admin token and its
 per-iteration bcrypt dominates the number — local mixed already characterizes it.
