@@ -43,8 +43,7 @@ k6 run -e BASE_URL=http://localhost:5000 -e ADMIN_TOKEN=<token> \
 | 18 | `18-reload-invalid-config-rejected.json` | Bad target → 400, previous routes kept, still serving 200 | fail-safe config |
 | 19 | `19-k6-summary.json` | 10 VUs × 45 s: 990 reqs, 0.00% fail, p95 1302 ms (< 2000 threshold: ok) | pass |
 | 20 | `20-secrets-manager-mocktest.txt` | Secrets Manager path via injected fake client (no AWS): JSON shape, plain-string, missing-key error, SDK-error propagation, cache-once, env precedence | 6/6 PASS |
-| 21 | `21-ratelimit-100-per-60s.txt` | Historical: burst under the short-lived `max: 100` config → `200×100 then 429×5` | sliding-window demo |
-| 22 | Current limit | `routes.json` now `max: 2000` / 60s (fits the k6 profile's ~1300 req/min with headroom; raise via reload for heavier runs) | — |
+| 21 | `21-ratelimit-100-per-60s.txt` | Production limit (`max: 100`, restored in `8269424`): burst of 105 → `200×100 then 429×5` (`X-RateLimit-Limit: 100`, `Retry-After: 56`) | classic sliding-window |
 
 Notes:
 - The rate-limit demo (16–17) used a temporary `max: 5` + `POST /gateway/reload`; the
@@ -52,3 +51,4 @@ Notes:
   byte-identical, `git status` clean for that file).
 - k6 registers a fresh user per iteration, so it measures the end-to-end flow
   (auth + browse + order), not pure gateway throughput — see review doc §14.
+- Full benchmark series (10 VUs, 4 layers, local + EC2): `docs/bench/RESULTS.md`.
