@@ -47,7 +47,7 @@ Same file is what runs on EC2 (see [AWS deployment](#aws-deployment)).
 
 - **L7 reverse proxy** — http-proxy-middleware routes `/api/users/*`, `/api/products/*`, `/api/orders/*` to their respective microservices; boundary-aware matching (`/api/products` never matches `/api/products-invalid`, longest prefix wins); atomic proxy-table rebuilds
 - **JWT verification** — validates Bearer tokens on `auth:true` routes; injects `X-User-Id` header to downstream services; secret resolved `AWS_JWT_SECRET_ID` (Secrets Manager, IAM role) → `JWT_SECRET` env → fail-fast in production; warmed at boot so bad wiring crashes loudly on deploy, not on first login
-- **Sliding-window rate limiting** — 100 requests per 60s per IP (configurable via `routes.json`); returns `Retry-After` and `X-RateLimit-*` headers on 429
+- **Sliding-window rate limiting** — 2000 requests per 60s per IP (configurable via `routes.json`); returns `Retry-After` and `X-RateLimit-*` headers on 429
 - **Health monitoring** — polls each backend every 10s; fail-closed: only `HEALTHY` backends receive traffic (`UNKNOWN`/`UNHEALTHY` → 503; 502 reserved for mid-request proxy errors)
 - **Dynamic config reload** — `POST /gateway/reload` (admin token) re-reads `routes.json`; invalid configs rejected with previous table kept
 - **Admin protection** — `/gateway/status`, `/gateway/metrics`, `POST /gateway/reload` require `X-Admin-Token` (warn-allow in dev, 403 fail-closed in production)
@@ -172,9 +172,9 @@ k6 (10 VUs × 45 s: 990 reqs, 0.00% fail, p95 < 2000 ms), Secrets Manager mock t
 
 ```bash
 # Requires k6 installed: https://k6.io
-# NOTE: the default limit is 100 req/60s per IP, so raise it temporarily for load runs:
-#  1. set routes.json rateLimit.max higher + POST /gateway/reload (admin token)
-#  2. k6 run ... && 3. restore + reload
+# ADMIN_TOKEN needed since /gateway/status requires it.
+# (Default limit 2000 req/60s comfortably fits this profile's ~1300 req/min;
+#  raise via routes.json + reload only for heavier runs.)
 k6 run -e BASE_URL=http://localhost:5000 -e ADMIN_TOKEN=<token> docs/load-test.js
 ```
 
