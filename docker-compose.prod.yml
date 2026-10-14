@@ -176,6 +176,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:-}
       AWS_JWT_SECRET_ID: ${AWS_JWT_SECRET_ID:-}
       AWS_REGION: ${AWS_REGION:-us-east-1}
+      # CloudWatch custom metrics (RequestCount/Error4xx/Error5xx/AvgLatencyMs
+      # every 60s). Needs cloudwatch:PutMetricData on the instance role.
+      AWS_CLOUDWATCH_METRICS: ${AWS_CLOUDWATCH_METRICS:-0}
       GATEWAY_ADMIN_TOKEN: ${GATEWAY_ADMIN_TOKEN:?Set GATEWAY_ADMIN_TOKEN in .env}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
     ports:

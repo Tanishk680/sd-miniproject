@@ -156,10 +156,29 @@ Internet → EC2 t3.small ─┬─ :3000 frontend (nginx + SPA)
 
 Deploy shape: `git clone -b <branch>` → write `.env` (no `JWT_SECRET` needed for the gateway path; backend services still take it from env) → `docker compose -f docker-compose.prod.yml up --build -d`.
 Security group: `22` ← your IP, `3000`/`5000` demo-open (tighten after). IAM role needs
-`secretsmanager:GetSecretValue` (one secret) + `logs:*` (one log group). Pre-create the log
+`secretsmanager:GetSecretValue` (one secret) + `logs:*` (one log group) + `cloudwatch:PutMetricData`
+(custom metrics). Pre-create the log
 group (parallel `CreateLogGroup` on cold boot races). Allocate an **Elastic IP** before the
 demo — restarts otherwise reassign the public address (and stale `CORS_ORIGIN`). **Stop**
 the instance after the demo; terminate only at full submission.
+
+## Observability (logs + metrics + alerts)
+
+Three layers, each independently useful:
+
+1. **Logs** — Docker `awslogs` driver ships every container's stdout to CloudWatch log group
+   `/ecommerce/prod` (per-container streams via `tag`). No code changes; Winston JSON stays queryable
+   in Logs Insights after containers die.
+2. **Custom metrics** — gateway publishes `RequestCount`, `Error4xx`, `Error5xx`, `AvgLatencyMs`
+   per minute to namespace `ECommerce/Gateway` (dimension `Service=api-gateway`).
+   Opt-in: `AWS_CLOUDWATCH_METRICS=1` (off locally; on in prod compose). Implementation
+   `gateway/src/services/metricsPublisher.js`: diffs `metrics.snapshot()` into per-flush deltas,
+   skips idle flushes, never throws into request handling (failures land in `/gateway/status`
+   → `cloudwatch.lastError`). Mock-tested without AWS (`metricsPublisher.mocktest.js`).
+3. **Alerts (console, no code)** — suggested: SNS topic → email subscription, then
+   * alarm on `ECommerce/Gateway Error5xx` `Sum ≥ 10 / 5 min` (backend trouble),
+   * alarm on EC2 `CPUUtilization > 80%` for 2 periods (saturation),
+   * metric filter on `/ecommerce/prod` for `{ $.status >= 500 }` as a log-derived backup signal.
 
 ## Test evidence
 

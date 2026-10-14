@@ -9,8 +9,14 @@ const { authenticateGateway } = require('./middleware/auth');
 const { requireAdmin } = require('./middleware/adminAuth');
 const rateLimitMiddleware = require('./middleware/rateLimiter');
 const metrics = require('./middleware/metrics');
+const { createPublisher } = require('./services/metricsPublisher');
 
 const app = express();
+
+// CloudWatch custom metrics (RequestCount/Error4xx/Error5xx/AvgLatencyMs,
+// namespace ECommerce/Gateway). Opt-in via AWS_CLOUDWATCH_METRICS=1 — off
+// locally, on in production. Fail-safe: publish errors never touch requests.
+const metricsPublisher = createPublisher({ enabled: process.env.AWS_CLOUDWATCH_METRICS === '1' });
 
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
   .split(',')
@@ -44,7 +50,8 @@ app.get('/gateway/status', requireAdmin, (req, res) => {
     lastConfigError: getLastConfigError(),
     rateLimit: config ? config.rateLimit : null,
     routes: config ? config.routes : [],
-    backends: healthChecker.getBackends()
+    backends: healthChecker.getBackends(),
+    cloudwatch: metricsPublisher.status()
   });
 });
 
@@ -74,6 +81,7 @@ const configResult = loadConfig();
 healthChecker.start(configResult.value);
 proxy.buildProxies();
 watch(proxy.rebuild);
+metricsPublisher.start();
 
 const PORT = process.env.PORT || 5000;
 // Warm the JWT secret at boot: proves the Secrets Manager (or env) wiring

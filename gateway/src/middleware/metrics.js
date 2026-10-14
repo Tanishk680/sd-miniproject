@@ -51,4 +51,14 @@ function reset() {
   };
 }
 
-module.exports = { metricsMiddleware, metricsReport, reset };
+// Plain snapshot for the CloudWatch publisher (monotonic totals;
+// the publisher diffs consecutive snapshots into per-flush deltas).
+function snapshot() {
+  return {
+    totalRequests: counters.totalRequests,
+    byStatus: Object.fromEntries(counters.byStatus),
+    totalLatencyMs: counters.totalLatencyMs
+  };
+}
+
+module.exports = { metricsMiddleware, metricsReport, reset, snapshot };

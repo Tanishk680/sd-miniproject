@@ -44,6 +44,7 @@ k6 run -e BASE_URL=http://localhost:5000 -e ADMIN_TOKEN=<token> \
 | 19 | `19-k6-summary.json` | 10 VUs × 45 s: 990 reqs, 0.00% fail, p95 1302 ms (< 2000 threshold: ok) | pass |
 | 20 | `20-secrets-manager-mocktest.txt` | Secrets Manager path via injected fake client (no AWS): JSON shape, plain-string, missing-key error, SDK-error propagation, cache-once, env precedence | 6/6 PASS |
 | 21 | `21-ratelimit-100-per-60s.txt` | Production limit (`max: 100`, restored in `8269424`): burst of 105 → `200×100 then 429×5` (`X-RateLimit-Limit: 100`, `Retry-After: 56`) | classic sliding-window |
+| 22 | `22-metrics-publisher-mocktest.txt` | CloudWatch publisher via fake client: per-flush deltas + shape, idle-skip, failure-swallow + status, disabled-by-default | 4/4 PASS |
 
 Notes:
 - The rate-limit demo (16–17) used a temporary `max: 5` + `POST /gateway/reload`; the
