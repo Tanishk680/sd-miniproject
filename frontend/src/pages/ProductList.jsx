@@ -1,15 +1,34 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
+import ProductCard from '../components/ProductCard';
 
 export default function ProductList() {
+  const [params, setParams] = useSearchParams();
+  const category = params.get('category') || '';
+  const search = params.get('q') || '';
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [category, setCategory] = useState('');
-  const [query, setQuery] = useState('');
-  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState(search);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setQuery(search);
+  }, [search]);
+
+  useEffect(() => {
+    let active = true;
+    api
+      .listProducts()
+      .then((data) => {
+        if (active) setCategories([...new Set(data.products.map((p) => p.category))].sort());
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -17,13 +36,7 @@ export default function ProductList() {
     setError('');
     const call = search ? api.searchProducts(search) : api.listProducts(category);
     call
-      .then((data) => {
-        if (!active) return;
-        setProducts(data.products);
-        if (!search && !category) {
-          setCategories([...new Set(data.products.map((p) => p.category))].sort());
-        }
-      })
+      .then((data) => active && setProducts(data.products))
       .catch((err) => active && setError(err.message))
       .finally(() => active && setLoading(false));
     return () => {
@@ -33,40 +46,54 @@ export default function ProductList() {
 
   function handleSearch(e) {
     e.preventDefault();
-    setCategory('');
-    setSearch(query.trim());
+    const q = query.trim();
+    setParams(q ? { q } : {});
   }
 
-  function clearSearch() {
+  function selectCategory(next) {
     setQuery('');
-    setSearch('');
+    setParams(next ? { category: next } : {});
   }
+
+  function clearAll() {
+    setQuery('');
+    setParams({});
+  }
+
+  const heading = search ? `Results for "${search}"` : category || 'All products';
 
   return (
-    <div>
+    <div className="product-list">
       <div className="page-head">
-        <h2>Products</h2>
+        <div>
+          <span className="eyebrow">Catalog</span>
+          <h2>{heading}</h2>
+          <p className="muted small">
+            {loading ? 'Loading products…' : `${products.length} ${products.length === 1 ? 'product' : 'products'} available`}
+          </p>
+        </div>
         <form className="search-bar" onSubmit={handleSearch}>
           <input
+            aria-label="Search products"
             placeholder="Search products…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
           <button type="submit">Search</button>
-          {search && (
-            <button type="button" className="secondary" onClick={clearSearch}>
+          {(search || category) && (
+            <button type="button" className="secondary" onClick={clearAll}>
               Clear
             </button>
           )}
         </form>
       </div>
 
-      {!search && categories.length > 0 && (
+      {categories.length > 0 && (
         <div className="filters">
           <button
             type="button"
-            className={category === '' ? 'chip active' : 'chip'}
-            onClick={() => setCategory('')}
+            className={category === '' && !search ? 'chip active' : 'chip'}
+            onClick={() => selectCategory('')}
           >
             All
           </button>
@@ -74,8 +101,8 @@ export default function ProductList() {
             <button
               key={c}
               type="button"
-              className={category === c ? 'chip active' : 'chip'}
-              onClick={() => setCategory(c)}
+              className={category === c && !search ? 'chip active' : 'chip'}
+              onClick={() => selectCategory(c)}
             >
               {c}
             </button>
@@ -83,18 +110,20 @@ export default function ProductList() {
         </div>
       )}
 
-      {loading && <p className="muted">Loading products…</p>}
       {error && <p className="error">{error}</p>}
-      {!loading && !error && products.length === 0 && <p className="muted">No products found.</p>}
+      {!loading && !error && products.length === 0 && (
+        <div className="empty-state">
+          <h3>No products found</h3>
+          <p className="muted">Try a different search or browse the full catalog.</p>
+          <button type="button" className="secondary" onClick={clearAll}>
+            Clear filters
+          </button>
+        </div>
+      )}
 
       <div className="grid">
         {products.map((p) => (
-          <Link key={p._id} to={`/products/${p._id}`} className="card product-card">
-            <h3>{p.name}</h3>
-            <p className="muted">{p.category}</p>
-            <p className="price">${p.price.toFixed(2)}</p>
-            <p className="muted small">{p.stock > 0 ? `${p.stock} in stock` : 'Out of stock'}</p>
-          </Link>
+          <ProductCard key={p._id} product={p} />
         ))}
       </div>
     </div>
