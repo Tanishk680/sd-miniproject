@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ProductList from './pages/ProductList';
@@ -10,11 +12,12 @@ import OrderHistory from './pages/OrderHistory';
 
 export default function App() {
   return (
-    <>
+    <div className="app-shell">
       <Navbar />
       <main className="container">
         <Routes>
-          <Route path="/" element={<ProductList />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/products" element={<ProductList />} />
           <Route path="/products/:id" element={<ProductDetail />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -37,6 +40,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-    </>
+      <Footer />
+    </div>
   );
 }

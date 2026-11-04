@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 
 export default function OrderHistory() {
@@ -24,20 +25,48 @@ export default function OrderHistory() {
   return (
     <div>
       <div className="page-head">
-        <h2>My Orders</h2>
+        <div>
+          <span className="eyebrow">Your account</span>
+          <h2>My Orders</h2>
+          <p className="muted small">
+            {orders.length} {orders.length === 1 ? 'order' : 'orders'} placed
+          </p>
+        </div>
+        <Link to="/products" className="button-link secondary">
+          Continue shopping
+        </Link>
       </div>
-      {orders.length === 0 && <p className="muted">You have not placed any orders yet.</p>}
+
+      {orders.length === 0 && (
+        <div className="card empty-state">
+          <span className="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 8h12l-1.2 11.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8z" />
+              <path d="M9 8a3 3 0 0 1 6 0" />
+            </svg>
+          </span>
+          <h3>No orders yet</h3>
+          <p className="muted">When you place your first order, it will show up here.</p>
+          <Link to="/products" className="button-link">
+            Browse products
+          </Link>
+        </div>
+      )}
+
       {orders.map((order) => (
         <div key={order._id} className="card order-card">
           <div className="order-head">
-            <span className="order-id">#{order._id.slice(-6)}</span>
+            <div>
+              <span className="order-id">Order #{order._id.slice(-6)}</span>
+              <p className="muted small">{new Date(order.createdAt).toLocaleString()}</p>
+            </div>
             <span className={`status status-${order.status.toLowerCase()}`}>{order.status}</span>
           </div>
           <ul className="order-items">
             {order.items.map((item, idx) => (
               <li key={idx} className="summary-row">
                 <span>
-                  {item.name} × {item.quantity}
+                  {item.name} <span className="muted">× {item.quantity}</span>
                 </span>
                 <span>${(item.price * item.quantity).toFixed(2)}</span>
               </li>
@@ -47,7 +76,6 @@ export default function OrderHistory() {
             <span>Total</span>
             <span>${order.totalAmount.toFixed(2)}</span>
           </div>
-          <p className="muted small">{new Date(order.createdAt).toLocaleString()}</p>
         </div>
       ))}
     </div>
