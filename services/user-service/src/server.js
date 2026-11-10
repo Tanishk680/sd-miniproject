@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./db');
 const userRoutes = require('./routes/userRoutes');
+const { metricsMiddleware, startMetricsServer } = require('./metrics');
 
 const app = express();
 
@@ -12,6 +13,7 @@ const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
   .filter(Boolean);
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
+app.use(metricsMiddleware);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'user-service', time: new Date().toISOString() });
@@ -24,6 +26,8 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 5001;
+
+startMetricsServer();
 
 connectDB().then(() => {
   app.listen(PORT, () => {

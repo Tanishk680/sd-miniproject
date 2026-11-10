@@ -9,6 +9,7 @@ const { authenticateGateway } = require('./middleware/auth');
 const { requireAdmin } = require('./middleware/adminAuth');
 const rateLimitMiddleware = require('./middleware/rateLimiter');
 const metrics = require('./middleware/metrics');
+const promMetrics = require('./metrics/prometheus');
 const { createPublisher } = require('./services/metricsPublisher');
 
 const app = express();
@@ -68,6 +69,7 @@ app.get('/gateway/metrics', requireAdmin, (req, res) => {
   res.json(metrics.metricsReport(healthChecker, getConfig));
 });
 
+app.use(promMetrics.metricsMiddleware);
 app.use(metrics.metricsMiddleware);
 app.use(rateLimitMiddleware());
 app.use(authenticateGateway());
@@ -82,6 +84,7 @@ healthChecker.start(configResult.value);
 proxy.buildProxies();
 watch(proxy.rebuild);
 metricsPublisher.start();
+promMetrics.startMetricsServer();
 
 const PORT = process.env.PORT || 5000;
 // Warm the JWT secret at boot: proves the Secrets Manager (or env) wiring

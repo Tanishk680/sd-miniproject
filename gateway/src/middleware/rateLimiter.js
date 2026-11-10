@@ -1,6 +1,7 @@
 const logger = require('../utils/logger');
 const { getConfig } = require('../config/configLoader');
 const { findMatchingRoute } = require('../utils/routeMatcher');
+const { gatewayRateLimited } = require('../metrics/prometheus');
 
 class SlidingWindowRateLimiter {
   constructor(windowMs, max) {
@@ -64,6 +65,7 @@ function rateLimitMiddleware() {
     if (result.allowed) return next();
 
     const retryAfter = Math.ceil(result.retryAfterMs / 1000);
+    gatewayRateLimited.labels(route ? route.path : 'unmatched').inc();
     logger.warn('Rate limit exceeded', { ip, path: req.originalUrl });
     res.setHeader('Retry-After', String(retryAfter));
     return res.status(429).json({ error: 'Too many requests', retryAfter });

@@ -1,0 +1,89 @@
+{
+  "nodes": [
+    {
+      "id": "traffic",
+      "label": "k6 / traffic",
+      "kind": "client",
+      "position": { "x": -220, "y": 140 }
+    },
+    {
+      "id": "frontend",
+      "label": "Frontend (nginx)",
+      "kind": "edge",
+      "service": "frontend",
+      "container": true,
+      "position": { "x": 0, "y": 140 }
+    },
+    {
+      "id": "gateway",
+      "label": "API Gateway",
+      "kind": "service",
+      "service": "gateway",
+      "app": true,
+      "container": true,
+      "position": { "x": 260, "y": 140 }
+    },
+    {
+      "id": "user-service",
+      "label": "User Service",
+      "kind": "service",
+      "service": "user-service",
+      "app": true,
+      "container": true,
+      "position": { "x": 520, "y": 0 }
+    },
+    {
+      "id": "product-service",
+      "label": "Product Service",
+      "kind": "service",
+      "service": "product-service",
+      "app": true,
+      "container": true,
+      "position": { "x": 520, "y": 140 }
+    },
+    {
+      "id": "order-service",
+      "label": "Order Service",
+      "kind": "service",
+      "service": "order-service",
+      "app": true,
+      "container": true,
+      "position": { "x": 520, "y": 280 }
+    },
+    {
+      "id": "mongo-user",
+      "label": "MongoDB (user)",
+      "kind": "db",
+      "service": "mongo-user",
+      "container": true,
+      "position": { "x": 800, "y": 0 }
+    },
+    {
+      "id": "mongo-product",
+      "label": "MongoDB (product)",
+      "kind": "db",
+      "service": "mongo-product",
+      "container": true,
+      "position": { "x": 800, "y": 140 }
+    },
+    {
+      "id": "mongo-order",
+      "label": "MongoDB (order)",
+      "kind": "db",
+      "service": "mongo-order",
+      "container": true,
+      "position": { "x": 800, "y": 280 }
+    }
+  ],
+  "edges": [
+    { "id": "traffic-frontend", "source": "traffic", "target": "frontend", "kind": "http" },
+    { "id": "frontend-gateway", "source": "frontend", "target": "gateway", "kind": "http", "label": "/api/*" },
+    { "id": "gateway-user", "source": "gateway", "target": "user-service", "kind": "http", "label": "/api/users" },
+    { "id": "gateway-product", "source": "gateway", "target": "product-service", "kind": "http", "label": "/api/products" },
+    { "id": "gateway-order", "source": "gateway", "target": "order-service", "kind": "http", "label": "/api/orders" },
+    { "id": "order-product", "source": "order-service", "target": "product-service", "kind": "internal", "label": "catalog lookup" },
+    { "id": "user-mongo", "source": "user-service", "target": "mongo-user", "kind": "db" },
+    { "id": "product-mongo", "source": "product-service", "target": "mongo-product", "kind": "db" },
+    { "id": "order-mongo", "source": "order-service", "target": "mongo-order", "kind": "db" }
+  ]
+}

@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const { getConfig } = require('../config/configLoader');
 const { getJwtSecret } = require('../services/secretManager');
 const { findMatchingRoute } = require('../utils/routeMatcher');
+const { gatewayAuthFailures } = require('../metrics/prometheus');
 
 function authenticateGateway() {
   return async function (req, res, next) {
@@ -16,6 +17,7 @@ function authenticateGateway() {
     const token = header.startsWith('Bearer ') ? header.slice(7) : null;
 
     if (!token) {
+      gatewayAuthFailures.labels('missing_token').inc();
       logger.warn('Missing token on protected route', { path: req.originalUrl });
       return res.status(401).json({ error: 'Missing token' });
     }
@@ -27,6 +29,7 @@ function authenticateGateway() {
       req.tokenPayload = payload;
       return next();
     } catch (_err) {
+      gatewayAuthFailures.labels('invalid_token').inc();
       logger.warn('Invalid or expired token', { path: req.originalUrl });
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
