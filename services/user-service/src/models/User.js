@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { userPasswordHashDuration } = require('../metrics');
 
 const userSchema = new mongoose.Schema(
   {
@@ -13,12 +14,26 @@ const userSchema = new mongoose.Schema(
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+  const started = process.hrtime.bigint();
+  try {
+    this.password = await bcrypt.hash(this.password, 10);
+  } finally {
+    userPasswordHashDuration
+      .labels('hash')
+      .observe(Number(process.hrtime.bigint() - started) / 1e9);
+  }
   next();
 });
 
 userSchema.methods.comparePassword = function (candidate) {
-  return bcrypt.compare(candidate, this.password);
+  const started = process.hrtime.bigint();
+  return Promise.resolve()
+    .then(() => bcrypt.compare(candidate, this.password))
+    .finally(() => {
+      userPasswordHashDuration
+        .labels('compare')
+        .observe(Number(process.hrtime.bigint() - started) / 1e9);
+    });
 };
 
 userSchema.set('toJSON', {

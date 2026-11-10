@@ -5,6 +5,7 @@ const connectDB = require('./db');
 const productRoutes = require('./routes/productRoutes');
 const Product = require('./models/Product');
 const seedProducts = require('./data/seed');
+const { metricsMiddleware, startMetricsServer } = require('./metrics');
 
 const app = express();
 
@@ -14,6 +15,7 @@ const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
   .filter(Boolean);
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
+app.use(metricsMiddleware);
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'product-service', time: new Date().toISOString() });
@@ -26,6 +28,8 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 5002;
+
+startMetricsServer();
 
 async function seed() {
   const count = await Product.estimatedDocumentCount();

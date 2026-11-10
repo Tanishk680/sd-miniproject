@@ -1,3 +1,5 @@
+const { orderProductCalls, orderProductDuration } = require('../metrics');
+
 const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL || 'http://product-service:5002';
 const TIMEOUT_MS = Number(process.env.PRODUCT_FETCH_TIMEOUT_MS || 5000);
 
@@ -11,6 +13,8 @@ class ProductServiceError extends Error {
 // Fetch the authoritative product record. Prices/names from the client are
 // never trusted — the order total is always computed from catalog data.
 async function fetchProduct(productId) {
+  const started = process.hrtime.bigint();
+  let outcome = 'success';
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -30,11 +34,17 @@ async function fetchProduct(productId) {
     }
     return data.product;
   } catch (err) {
-    if (err instanceof ProductServiceError) throw err;
+    if (err instanceof ProductServiceError) {
+      outcome = err.statusCode === 400 ? 'invalid_product' : 'unavailable';
+      throw err;
+    }
     const reason = err && err.name === 'AbortError' ? 'timed out' : (err && err.message) || 'unreachable';
+    outcome = reason === 'timed out' ? 'timeout' : 'unavailable';
     throw new ProductServiceError(`Product service unavailable (${reason})`, 503);
   } finally {
     clearTimeout(timeout);
+    orderProductCalls.labels(outcome).inc();
+    orderProductDuration.labels(outcome).observe(Number(process.hrtime.bigint() - started) / 1e9);
   }
 }
 

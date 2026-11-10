@@ -56,16 +56,18 @@ services:
     command: npm run dev
     environment:
       PORT: 5001
+      METRICS_PORT: 9461
       MONGO_URI: mongodb://mongo-user:27017/userdb
       JWT_SECRET: ${JWT_SECRET:-dev-insecure-jwt-secret-change-me}
       JWT_EXPIRES_IN: 2h
       NODE_ENV: ${NODE_ENV:-development}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
-    # SECURITY: no host `ports` — reachable only via internal `app-net`
-    # through the gateway. For local debugging, use:
-    #   docker compose run --rm --publish 5001:5001 user-service
+    # SECURITY: app port internal-only (`app-net`); the Prometheus metrics
+    # port is published to loopback only, never to the network.
     expose:
       - "5001"
+    ports:
+      - "127.0.0.1:9461:9461"
     depends_on:
       mongo-user:
         condition: service_healthy
@@ -88,12 +90,15 @@ services:
     command: npm run dev
     environment:
       PORT: 5002
+      METRICS_PORT: 9462
       MONGO_URI: mongodb://mongo-product:27017/productdb
       NODE_ENV: ${NODE_ENV:-development}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
     # SECURITY: internal-only, see user-service note.
     expose:
       - "5002"
+    ports:
+      - "127.0.0.1:9462:9462"
     depends_on:
       mongo-product:
         condition: service_healthy
@@ -116,6 +121,7 @@ services:
     command: npm run dev
     environment:
       PORT: 5003
+      METRICS_PORT: 9463
       MONGO_URI: mongodb://mongo-order:27017/orderdb
       JWT_SECRET: ${JWT_SECRET:-dev-insecure-jwt-secret-change-me}
       PRODUCT_SERVICE_URL: http://product-service:5002
@@ -124,6 +130,8 @@ services:
     # SECURITY: internal-only, see user-service note.
     expose:
       - "5003"
+    ports:
+      - "127.0.0.1:9463:9463"
     depends_on:
       mongo-order:
         condition: service_healthy
@@ -146,12 +154,14 @@ services:
     command: npm run dev
     environment:
       PORT: 5000
+      METRICS_PORT: 9460
       JWT_SECRET: ${JWT_SECRET:-}
       NODE_ENV: ${NODE_ENV:-development}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       GATEWAY_ADMIN_TOKEN: ${GATEWAY_ADMIN_TOKEN:-}
     ports:
       - "5000:5000"
+      - "127.0.0.1:9460:9460"
     depends_on:
       - user-service
       - product-service

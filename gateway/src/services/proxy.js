@@ -3,6 +3,7 @@ const logger = require('../utils/logger');
 const { getConfig } = require('../config/configLoader');
 const { findMatchingRoute } = require('../utils/routeMatcher');
 const healthChecker = require('./healthChecker');
+const { gatewayHealthGateRejections } = require('../metrics/prometheus');
 
 let proxyRegistry = [];
 let middlewareByRoute = new Map();
@@ -71,6 +72,7 @@ function proxyMiddleware(req, res, next) {
   // UNKNOWN (startup, no successful check yet) and UNHEALTHY both get 503.
   // 502 remains reserved for a proxy/upstream error mid-request.
   if (!backend || backend.status !== 'HEALTHY') {
+    gatewayHealthGateRejections.labels(route.path).inc();
     logger.warn('Rejecting request to unhealthy backend', {
       target: route.target,
       path: req.originalUrl
