@@ -160,7 +160,7 @@ create_service_account() {
 }
 
 copy_sources() {
-  install -d "${SERVER_ROOT}" "${UI_ROOT}"
+  install -d "${SERVER_ROOT}" "${UI_ROOT}" "${APP_ROOT}/scenarios"
   rsync -a --delete \
     --exclude node_modules \
     --exclude .env \
@@ -169,7 +169,9 @@ copy_sources() {
   rsync -a --delete \
     --exclude node_modules \
     "${REPO_PATH}/sim/ui/" "${UI_ROOT}/"
-  chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${SERVER_ROOT}" "${UI_ROOT}"
+  rsync -a --delete \
+    "${REPO_PATH}/sim/scenarios/" "${APP_ROOT}/scenarios/"
+  chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${SERVER_ROOT}" "${UI_ROOT}" "${APP_ROOT}/scenarios"
 }
 
 ensure_env_template() {
