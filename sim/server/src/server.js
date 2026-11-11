@@ -75,6 +75,13 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+app.get('/api/me', (req, res) => {
+  res.json({
+    adminRequired: Boolean(config.adminIdentities.length),
+    admin: Boolean(adminFromRequest(req))
+  });
+});
+
 app.get('/api/topology', requirePublic, (_req, res) => {
   res.json(topology);
 });

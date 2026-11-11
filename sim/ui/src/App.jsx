@@ -196,8 +196,8 @@ export default function App() {
           <ChaosPanel
             chaos={twin.settings?.chaos}
             busy={busy}
-            token={twin.token}
             adminRequired={twin.adminRequired}
+            isAdmin={twin.isAdmin}
             onChaos={handleChaos}
             onRecover={handleRecover}
           />

@@ -7,6 +7,7 @@ export function useTwin() {
   const [authRequired, setAuthRequired] = useState(false);
   const [tokenRequired, setTokenRequired] = useState(false);
   const [adminRequired, setAdminRequired] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [connected, setConnected] = useState(false);
   const [snapshot, setSnapshot] = useState(null);
   const [snapshots, setSnapshots] = useState([]);
@@ -85,6 +86,20 @@ export function useTwin() {
       })
       .catch(() => setError('Control server unreachable'));
   }, []);
+
+  useEffect(() => {
+    let stale = false;
+    apiFetch('/api/me')
+      .then((me) => {
+        if (!stale) setIsAdmin(Boolean(me?.admin));
+      })
+      .catch(() => {
+        if (!stale) setIsAdmin(false);
+      });
+    return () => {
+      stale = true;
+    };
+  }, [apiFetch, token]);
 
   useEffect(() => {
     loadStatic();
@@ -200,6 +215,7 @@ export function useTwin() {
     authRequired,
     tokenRequired,
     adminRequired,
+    isAdmin,
     connected,
     snapshot,
     snapshots,
