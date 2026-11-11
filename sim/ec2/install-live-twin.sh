@@ -47,7 +47,10 @@ require_tool() {
 }
 
 install_base_tools() {
-  dnf install -y curl ca-certificates git unzip tar rsync openssh-clients
+  # AL2023 ships curl-minimal (provides /usr/bin/curl); installing full `curl`
+  # conflicts with it, so only verify curl exists instead of installing it.
+  require_tool curl
+  dnf install -y ca-certificates git unzip tar rsync openssh-clients
 }
 
 install_node22() {
