@@ -47,11 +47,14 @@ export function readOne() {
 export function registerUser(prefix, password = 'secret123') {
   const username = `${prefix}${Date.now()}${Math.floor(Math.random() * 1e6)}`;
   //const password = 'secret123';
-  http.post(
+  const res = http.post(
     `${BASE}/api/users/register`,
     JSON.stringify({ username, email: `${username}@test.com`, password }),
     JSON_REQUEST,
   );
+  if (res.status !== 200 && res.status !== 201) {
+    throw new Error(`register failed for ${username}: status ${res.status}`);
+  }
   return { username, password };
 }
 
