@@ -124,6 +124,8 @@ ensure_prometheus_runtime() {
   if ! id prometheus >/dev/null 2>&1; then
     useradd --system --home-dir /var/lib/prometheus --create-home --shell /usr/sbin/nologin prometheus
   fi
+  # /etc/sim is 0750 sim:sim; prometheus reads its config through the group.
+  usermod -aG "${SERVICE_GROUP}" prometheus
   install -d -o prometheus -g prometheus -m 0750 /var/lib/prometheus
 }
 
