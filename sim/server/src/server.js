@@ -8,7 +8,13 @@ const store = require('./store');
 const runs = require('./runs');
 const chaos = require('./chaos');
 const { tokenHash, ensureAdminIdentities } = require('./admin');
-const { requirePublic, requireToken, requireAdmin, adminFromRequest, tokenFromRequest } = require('./auth');
+const {
+  requirePublic,
+  requireScenarioAuth,
+  requireAdmin,
+  adminFromRequest,
+  requireWsAuth
+} = require('./auth');
 
 const app = express();
 if (config.trustProxy) app.set('trust proxy', true);
@@ -25,7 +31,7 @@ function rateLimit({ limit, windowMs, keyFromReq = (req) => req.ip || 'unknown' 
     const now = Date.now();
     const existing = rateLimiters.get(namePlusKey) || { hits: [], resetAt: now + windowMs };
     rateLimiters.set(namePlusKey, existing);
-    existing.hits = existing.hits.filter((hit) => now < hit);
+    existing.hits = existing.hits.filter((hit) => now - hit < windowMs);
     if (existing.hits.length >= limit) {
       const failed = now - existing.hits[0];
       const retryAfter = Math.max(1, Math.ceil((windowMs - failed) / 1000));
@@ -62,6 +68,7 @@ app.get('/api/health', (_req, res) => {
     ok: true,
     mode: config.mockMode ? 'mock' : 'live',
     authRequired: false,
+    tokenRequired: Boolean(config.token),
     publicScenarioAccess: config.publicScenarioAccess,
     adminRequired: Boolean(config.adminIdentities.length),
     ts: Date.now()
@@ -81,6 +88,7 @@ app.get('/api/settings', requirePublic, (_req, res) => {
   res.json({
     mode: config.mockMode ? 'mock' : 'live',
     authRequired: false,
+    tokenRequired: Boolean(config.token),
     publicScenarioAccess: config.publicScenarioAccess,
     adminRequired: Boolean(config.adminIdentities.length),
     rateLimitRps: config.gatewayRateLimitRps,
@@ -108,7 +116,7 @@ app.get('/api/snapshot', requirePublic, async (_req, res) => {
   }
 });
 
-app.post('/api/runs', requirePublic, publicRunLimiter, requireAdminScenario, (req, res) => {
+app.post('/api/runs', requireScenarioAuth, publicRunLimiter, requireAdminScenario, (req, res) => {
   try {
     const run = runs.startRun({
       scenarioId: req.body?.scenario,
@@ -123,7 +131,7 @@ app.post('/api/runs', requirePublic, publicRunLimiter, requireAdminScenario, (re
   }
 });
 
-app.post('/api/runs/:id/stop', requirePublic, publicRunLimiter, (req, res) => {
+app.post('/api/runs/:id/stop', requireScenarioAuth, (req, res) => {
   if (!runs.stopRun(req.params.id)) {
     return res.status(404).json({ error: 'No matching active run' });
   }
@@ -166,7 +174,7 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({
   server,
   path: '/ws',
-  verifyClient: (info, callback) => callback(!config.publicScenarioAccess ? tokenFromRequest(info.req) : true)
+  verifyClient: (info, callback) => callback(requireWsAuth(info.req))
 });
 
 let latest = null;
@@ -219,11 +227,16 @@ server.listen(config.port, config.host, () => {
 
 function shutdown() {
   clearInterval(timer);
-  const runId = runs.activeRunId();
-  if (runId) runs.stopRun(runId);
+  runs.shutdown();
   wss.close();
-  server.close();
-  store.close();
+  server.close(() => {
+    store.close();
+    process.exit(0);
+  });
+  setTimeout(() => {
+    store.close();
+    process.exit(0);
+  }, 3000).unref();
 }
 
 process.on('SIGINT', () => {

@@ -1,0 +1,32 @@
+[Unit]
+Description=SSH metrics tunnel from the control EC2 to the ecommerce EC2
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/sim/.env
+ExecStart=/usr/bin/ssh -N \
+  -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=30 \
+  -o ServerAliveCountMax=3 \
+  -o StrictHostKeyChecking=yes \
+  -o UserKnownHostsFile=/etc/sim/keys/known_hosts \
+  -i /etc/sim/keys/ecommerce.pem \
+  ${EC2_USER}@${EC2_HOST} \
+  -L 127.0.0.1:9460:127.0.0.1:9460 \
+  -L 127.0.0.1:9461:127.0.0.1:9461 \
+  -L 127.0.0.1:9462:127.0.0.1:9462 \
+  -L 127.0.0.1:9463:127.0.0.1:9463 \
+  -L 127.0.0.1:18080:127.0.0.1:18080
+Restart=always
+RestartSec=5
+User=sim
+Group=sim
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -11,6 +11,11 @@ if (typeof process.loadEnvFile === 'function') {
 const serverRoot = path.join(__dirname, '..');
 const simRoot = path.join(serverRoot, '..');
 
+const dbPath = process.env.SIM_DB
+  ? path.resolve(serverRoot, process.env.SIM_DB)
+  : '/var/lib/sim/twin.sqlite';
+const dataDir = path.dirname(dbPath);
+
 function parseAdminIdentities(raw) {
   const value = String(raw || '').trim();
   if (!value) return [];
@@ -44,14 +49,14 @@ module.exports = {
   snapshotIntervalMs: Number(process.env.SNAPSHOT_INTERVAL_MS || 1000),
   maxRunMs: Number(process.env.MAX_RUN_MS || 6 * 60 * 1000),
   k6Bin: process.env.K6_BIN || 'k6',
-  dataDir: path.join(serverRoot, 'data'),
+  dataDir,
+  runsDir: path.join(dataDir, 'runs'),
   scenariosDir: path.join(simRoot, 'scenarios'),
-  dbPath: process.env.SIM_DB
-    ? path.resolve(serverRoot, process.env.SIM_DB)
-    : path.join(serverRoot, 'data', 'twin.sqlite'),
+  dbPath,
   ssh: {
     host: process.env.EC2_HOST || '',
     user: process.env.EC2_USER || 'ec2-user',
-    keyPath: process.env.EC2_KEY_PATH || ''
+    keyPath: process.env.EC2_KEY_PATH || '',
+    hostKeySha256: process.env.EC2_HOST_KEY_SHA256 || ''
   }
 };

@@ -33,8 +33,9 @@ function Header({ twin, mode }) {
         </span>
         <span className="mode-pill">{mode}</span>
         {twin.adminRequired && <TokenForm compact onSave={twin.setToken} initial={twin.token} />}
-        {twin.token && twin.adminRequired && (
-          <button className="icon-btn" onClick={() => twin.setToken('')} title="Forget token">×</button>
+        {!twin.adminRequired && twin.tokenRequired && <TokenForm compact onSave={twin.setToken} initial={twin.token} />}
+        {twin.token && (twin.adminRequired || twin.tokenRequired) && (
+          <button className="icon-btn" onClick={() => twin.setToken('')} title="Forget token">A-</button>
         )}
       </div>
     </header>
