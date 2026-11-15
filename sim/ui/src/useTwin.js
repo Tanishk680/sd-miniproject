@@ -5,7 +5,9 @@ const TOKEN_KEY = 'sim_token';
 export function useTwin() {
   const [token, setTokenState] = useState(() => localStorage.getItem(TOKEN_KEY) || '');
   const [authRequired, setAuthRequired] = useState(false);
+  const [tokenRequired, setTokenRequired] = useState(false);
   const [adminRequired, setAdminRequired] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [connected, setConnected] = useState(false);
   const [snapshot, setSnapshot] = useState(null);
   const [snapshots, setSnapshots] = useState([]);
@@ -79,10 +81,25 @@ export function useTwin() {
       .then((res) => res.json())
       .then((health) => {
         setAuthRequired(false);
+        setTokenRequired(Boolean(health.tokenRequired));
         setAdminRequired(Boolean(health.adminRequired));
       })
       .catch(() => setError('Control server unreachable'));
   }, []);
+
+  useEffect(() => {
+    let stale = false;
+    apiFetch('/api/me')
+      .then((me) => {
+        if (!stale) setIsAdmin(Boolean(me?.admin));
+      })
+      .catch(() => {
+        if (!stale) setIsAdmin(false);
+      });
+    return () => {
+      stale = true;
+    };
+  }, [apiFetch, token]);
 
   useEffect(() => {
     loadStatic();
@@ -196,7 +213,9 @@ export function useTwin() {
     token,
     setToken,
     authRequired,
+    tokenRequired,
     adminRequired,
+    isAdmin,
     connected,
     snapshot,
     snapshots,

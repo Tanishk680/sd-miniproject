@@ -11,13 +11,12 @@ Restart=always
 RestartSec=5
 User=sim
 Group=sim
-# SQLite file lives under /var/lib/sim
+# SQLite file and run summaries live under /var/lib/sim
 ReadWritePaths=/var/lib/sim
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 ProtectHome=true
-ReadWritePaths=/var/lib/sim
 
 [Install]
 WantedBy=multi-user.target

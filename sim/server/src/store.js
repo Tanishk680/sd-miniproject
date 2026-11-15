@@ -77,6 +77,9 @@ const deactivateOtherAdminsStmt = db.prepare(`
    AND name NOT IN (SELECT value FROM json_each(?))
 `);
 
+// Any 'running' rows at startup are leftovers from a crash or hard kill.
+db.prepare("UPDATE runs SET status = 'interrupted', ended_at = ? WHERE status = 'running'").run(Date.now());
+
 function createRun({ id, label, scenario = null, mode = 'live' }) {
   insertRun.run(id, label, scenario, mode, Date.now(), 'running');
   return { id, label, scenario, mode };

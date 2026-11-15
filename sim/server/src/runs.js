@@ -152,6 +152,66 @@ function killTree(proc) {
   }, 5000).unref();
 }
 
+const NUMERIC_ENV = new Set(['RPS', 'RATE_START', 'RATE_PEAK', 'USERS', 'PRE_VUS', 'MAX_VUS']);
+const DURATION_ENV = new Set(['DURATION', 'RAMP', 'HOLD', 'DOWN']);
+const NUMERIC_LIMITS = {
+  RPS: { min: 1, max: 250 },
+  RATE_START: { min: 1, max: 250 },
+  RATE_PEAK: { min: 1, max: 250 },
+  USERS: { min: 1, max: 500 },
+  PRE_VUS: { min: 1, max: 500 },
+  MAX_VUS: { min: 1, max: 1000 }
+};
+const MAX_DURATION_MS = 15 * 60 * 1000;
+
+function validateRunParams({ scenarioId, label, env } = {}) {
+  if (typeof scenarioId !== 'string' || !/^[a-z0-9-]+$/.test(scenarioId)) {
+    const err = new Error('Invalid scenario id');
+    err.code = 'BAD_SCENARIO';
+    throw err;
+  }
+
+  if (label !== undefined && label !== null && typeof label !== 'string') {
+    const err = new Error('Label must be a string');
+    err.code = 'BAD_LABEL';
+    throw err;
+  }
+
+  if (env === undefined || env === null) return;
+  if (typeof env !== 'object' || Array.isArray(env)) {
+    const err = new Error('env must be an object');
+    err.code = 'BAD_ENV';
+    throw err;
+  }
+
+  for (const [key, rawValue] of Object.entries(env)) {
+    if (!ALLOWED_ENV.has(key)) {
+      const err = new Error(`Env override not allowed: ${key}`);
+      err.code = 'BAD_ENV';
+      throw err;
+    }
+
+    if (NUMERIC_ENV.has(key)) {
+      const value = Number(rawValue);
+      const limits = NUMERIC_LIMITS[key] || { min: 1, max: 1000 };
+      if (!Number.isFinite(value) || value < limits.min || value > limits.max) {
+        const err = new Error(`${key} must be a number between ${limits.min} and ${limits.max}`);
+        err.code = 'BAD_ENV';
+        throw err;
+      }
+    }
+
+    if (DURATION_ENV.has(key)) {
+      const ms = parseDurationMs(rawValue);
+      if (!ms || ms > MAX_DURATION_MS) {
+        const err = new Error(`${key} must be a duration between 1ms and ${MAX_DURATION_MS}ms`);
+        err.code = 'BAD_ENV';
+        throw err;
+      }
+    }
+  }
+}
+
 function sanitizeEnv(env) {
   const result = {};
   for (const [key, value] of Object.entries(env || {})) {
@@ -166,6 +226,7 @@ function sanitizeEnv(env) {
 }
 
 function startRun({ scenarioId, label, env, admin = false } = {}) {
+  validateRunParams({ scenarioId, label, env });
   if (active) {
     const err = new Error('A run is already in progress');
     err.code = 'RUN_ACTIVE';
@@ -185,7 +246,7 @@ function startRun({ scenarioId, label, env, admin = false } = {}) {
   }
 
   const id = `${Date.now().toString(36)}-${(++seq).toString(36)}`;
-  const runDir = path.join(config.dataDir, 'runs');
+  const runDir = config.runsDir;
   fs.mkdirSync(runDir, { recursive: true });
   const summaryFile = path.join(runDir, `${id}.json`);
   const scriptPath = path.join(config.scenariosDir, scenario.script);
@@ -286,6 +347,13 @@ function stopRun(id) {
   return true;
 }
 
+function shutdown() {
+  if (!active) return;
+  active.stopped = true;
+  emit({ type: 'run-note', id: active.id, message: 'Server shutting down; stopping run' });
+  killTree(active.proc);
+}
+
 module.exports = {
   listScenarios,
   getScenario,
@@ -293,5 +361,6 @@ module.exports = {
   stopRun,
   activeRun,
   activeRunId,
-  onEvent
+  onEvent,
+  shutdown
 };

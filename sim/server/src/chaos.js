@@ -1,6 +1,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
 const { Client } = require('ssh2');
 const config = require('./config');
 const topology = require('./topology.json');
@@ -13,10 +14,16 @@ function keyPath() {
   return config.ssh.keyPath.replace(/^~/, os.homedir());
 }
 
+function fingerprintOf(keyBuffer) {
+  const digest = crypto.createHash('sha256').update(keyBuffer).digest('base64').replace(/=+$/, '');
+  return `SHA256:${digest}`;
+}
+
 function capabilities() {
   return {
     ssh: Boolean(config.ssh.host && keyPath() && fs.existsSync(keyPath())),
-    host: config.ssh.host || null
+    host: config.ssh.host || null,
+    hostKeyVerified: Boolean(config.ssh.hostKeySha256)
   };
 }
 
@@ -110,7 +117,14 @@ function execRemote(command) {
       username: config.ssh.user,
       privateKey: fs.readFileSync(keyPath()),
       readyTimeout: 10000,
-      keepaliveInterval: 5000
+      keepaliveInterval: 5000,
+      hostVerifier: (key, verify) => {
+        if (!config.ssh.hostKeySha256) {
+          verify(false);
+          return;
+        }
+        verify(fingerprintOf(key) === config.ssh.hostKeySha256);
+      }
     });
   });
 }

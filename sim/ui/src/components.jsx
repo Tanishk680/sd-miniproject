@@ -347,7 +347,7 @@ export function ScenarioSignal({ scenario, snapshot, activeRun, rateLimitRps }) 
   );
 }
 
-export function ChaosPanel({ chaos, busy, token, adminRequired, onChaos, onRecover }) {
+export function ChaosPanel({ chaos, busy, adminRequired, isAdmin, onChaos, onRecover }) {
   const services = chaos?.services || [];
   const [service, setService] = useState('');
   const [cpus, setCpus] = useState(0.5);
@@ -356,7 +356,7 @@ export function ChaosPanel({ chaos, busy, token, adminRequired, onChaos, onRecov
     if (!service && services.length > 0) setService(services[0]);
   }, [services, service]);
 
-  const adminLocked = Boolean(adminRequired) && !token;
+  const adminLocked = Boolean(adminRequired) && !isAdmin;
   const disabled = busy || adminLocked || !chaos?.ssh;
 
   function act(action) {
