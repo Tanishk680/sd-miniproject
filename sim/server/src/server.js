@@ -98,6 +98,7 @@ app.get('/api/settings', requirePublic, (_req, res) => {
     tokenRequired: Boolean(config.token),
     publicScenarioAccess: config.publicScenarioAccess,
     adminRequired: Boolean(config.adminIdentities.length),
+    defaultToken: config.token || '',
     rateLimitRps: config.gatewayRateLimitRps,
     activeRun: runs.activeRun(),
     scenarios: runs.listScenarios(Boolean(adminFromRequest(_req))),

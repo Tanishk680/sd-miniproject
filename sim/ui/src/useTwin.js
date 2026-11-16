@@ -70,6 +70,11 @@ export function useTwin() {
       setTopology(topo);
       setSettings(cfg);
       setRuns(runData.runs || []);
+      if (!tokenRef.current && cfg?.defaultToken) {
+        const prefill = String(cfg.defaultToken);
+        localStorage.setItem(TOKEN_KEY, prefill);
+        setTokenState(prefill);
+      }
       setError('');
     } catch (err) {
       if (err.message !== 'Unauthorized') setError(err.message);
