@@ -120,6 +120,21 @@ const scenarios = [
     }
   },
   {
+    id: 'rate-limit',
+    name: 'Rate limit',
+    script: 'rate-limit.js',
+    description: 'Sustained 120 rps read traffic to cross the 83 rps gateway cap. Expect 429s with Retry-After.',
+    env: { RPS: '120', DURATION: '90s' },
+    defaultsMs: 110000,
+    signal: {
+      label: 'Rate limit',
+      tone: 'warn',
+      targetRps: 120,
+      crossesLimit: true,
+      expectation: 'Expect 429s: arrival rate exceeds the 83 rps gateway cap'
+    }
+  },
+  {
     id: 'auth-failure-flood',
     name: 'Auth failure flood',
     script: 'auth-flood.js',
@@ -148,22 +163,6 @@ const scenarios = [
       targetRps: 20,
       crossesLimit: false,
       expectation: 'CloudWatch gateway-5xx-spike should fire during the run'
-    }
-  },
-  {
-    id: 'cloudwatch-cpu-high',
-    name: 'CloudWatch CPU saturation',
-    script: 'cloudwatch-cpu-high.js',
-    description: 'Sustains staged user-service CPU load high enough for ec2-cpu-high.',
-    env: { RPS: '80', DURATION: '10m', USERS: '20' },
-    defaultsMs: 620000,
-    adminOnly: true,
-    signal: {
-      label: 'CPU alarm',
-      tone: 'danger',
-      targetRps: 80,
-      crossesLimit: false,
-      expectation: 'CloudWatch ec2-cpu-high should fire if CPU crosses 80%'
     }
   },
 ];
