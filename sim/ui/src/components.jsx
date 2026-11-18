@@ -5,7 +5,6 @@ import {
   Controls,
   Handle,
   MarkerType,
-  MiniMap,
   Position,
   ReactFlow
 } from '@xyflow/react';
@@ -157,17 +156,6 @@ export function TopologyCanvas({ topology, snapshot, selectedId, onSelect }) {
       >
         <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#1e293b" />
         <Controls showInteractive={false} />
-        <MiniMap
-          pannable={false}
-          zoomable={false}
-          maskColor="rgba(3, 7, 18, 0.78)"
-          nodeColor={(node) => {
-            const status = node.data?.metrics?.status;
-            if (status === 'down') return '#ef4444';
-            if (status === 'unknown') return '#475569';
-            return node.id === selectedId ? '#38bdf8' : '#64748b';
-          }}
-        />
       </ReactFlow>
       <div className="canvas-legend">
         <span><i className="legend-dot good" /> healthy</span>

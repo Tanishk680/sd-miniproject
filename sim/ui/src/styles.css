@@ -538,13 +538,6 @@ code {
   background: #16233c;
 }
 
-.react-flow__minimap {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  overflow: hidden;
-  background: #080d18;
-}
-
 .react-flow__edge-text {
   fill: #cbd5e1;
 }
