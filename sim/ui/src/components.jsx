@@ -218,7 +218,17 @@ export function KpiRow({ snapshot, connected, mode, activeRun }) {
   );
 }
 
-export function ScenarioPanel({ scenarios, activeRun, busy, label, setLabel, onStart, onStop }) {
+export function ScenarioPanel({
+  scenarios,
+  activeRun,
+  busy,
+  label,
+  setLabel,
+  stormRps,
+  setStormRps,
+  onStart,
+  onStop
+}) {
   return (
     <section className="panel">
       <div className="panel-head">
@@ -241,13 +251,26 @@ export function ScenarioPanel({ scenarios, activeRun, busy, label, setLabel, onS
           </button>
         </div>
       ) : (
-        <input
-          className="text-input"
-          value={label}
-          onChange={(event) => setLabel(event.target.value)}
-          placeholder="Run label (optional)"
-          maxLength={80}
-        />
+        <div className="run-config">
+          <input
+            className="text-input"
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+            placeholder="Run label (optional)"
+            maxLength={80}
+          />
+          <input
+            className="text-input"
+            type="number"
+            min="1"
+            max="250"
+            step="1"
+            value={stormRps}
+            onChange={(event) => setStormRps(event.target.value)}
+            placeholder="Login storm rps (default 15)"
+          />
+          <small className="run-hint">RPS override applies to Login storm only, for one run, then resets.</small>
+        </div>
       )}
 
       <div className="scenario-list">
@@ -284,7 +307,7 @@ export function ScenarioSignal({ scenario, snapshot, activeRun, rateLimitRps }) 
   const signal = scenario.signal || {};
   const gateway = snapshot?.nodes?.gateway;
   const cap = Number(rateLimitRps) || 83;
-  const target = Number(signal.targetRps) || 0;
+  const target = Number(activeRun.env?.RPS) || Number(signal.targetRps) || 0;
   const liveRps = gateway?.rps || 0;
   const limited = gateway?.rateLimited || 0;
   const gateRejected = gateway?.healthGateRejections || 0;

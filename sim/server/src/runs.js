@@ -72,7 +72,8 @@ function activeRun() {
     id: active.id,
     scenario: active.scenarioId,
     label: active.label,
-    startedAt: active.startedAt
+    startedAt: active.startedAt,
+    env: active.env
   };
 }
 
@@ -296,6 +297,7 @@ function startRun({ scenarioId, label, env, admin = false } = {}) {
     label: runLabel,
     startedAt,
     proc,
+    env: sanitizeEnv(env),
     stopped: false
   };
 

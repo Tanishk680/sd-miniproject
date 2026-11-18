@@ -704,6 +704,19 @@ code {
   color: var(--muted);
 }
 
+.run-config {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.run-hint {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
 .scenario-list {
   display: flex;
   flex-direction: column;

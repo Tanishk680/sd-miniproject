@@ -46,6 +46,7 @@ export default function App() {
   const twin = useTwin();
   const [selectedId, setSelectedId] = useState('gateway');
   const [label, setLabel] = useState('');
+  const [stormRps, setStormRps] = useState('');
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState(null);
   const [replay, setReplay] = useState(null);
@@ -98,8 +99,18 @@ export default function App() {
   async function handleStart(scenarioId) {
     setBusy(true);
     try {
-      const run = await twin.startRun(scenarioId, label);
+      const env = {};
+      const stormRpsRaw = stormRps.trim();
+      if (scenarioId === 'login-storm' && stormRpsRaw) {
+        const rps = Number(stormRpsRaw);
+        if (!Number.isInteger(rps) || rps < 1 || rps > 250) {
+          throw new Error('Login storm rps must be a whole number between 1 and 250');
+        }
+        env.RPS = String(rps);
+      }
+      const run = await twin.startRun(scenarioId, label, env);
       setLabel('');
+      setStormRps('');
       showToast(`Started ${run.label}`);
     } catch (err) {
       showToast(err.message, 'bad');
@@ -190,6 +201,8 @@ export default function App() {
             busy={busy}
             label={label}
             setLabel={setLabel}
+            stormRps={stormRps}
+            setStormRps={setStormRps}
             onStart={handleStart}
             onStop={handleStop}
           />

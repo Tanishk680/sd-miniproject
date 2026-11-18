@@ -183,10 +183,10 @@ export function useTwin() {
   }, []);
 
   const startRun = useCallback(
-    async (scenario, label) => {
+    async (scenario, label, env) => {
       const run = await apiFetch('/api/runs', {
         method: 'POST',
-        body: JSON.stringify({ scenario, label: label || undefined })
+        body: JSON.stringify({ scenario, label: label || undefined, env })
       });
       refreshRuns();
       return run;
