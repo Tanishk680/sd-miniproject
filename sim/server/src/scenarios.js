@@ -165,6 +165,21 @@ const scenarios = [
       expectation: 'CloudWatch gateway-5xx-spike should fire during the run'
     }
   },
+  {
+    id: 'cpu-saturation',
+    name: 'CPU saturation',
+    script: 'cloudwatch-cpu-high.js',
+    description: 'Sustained bcrypt login load that pins user-service CPU at its container limit.',
+    env: { RPS: '20', DURATION: '180s', USERS: '20' },
+    defaultsMs: 200000,
+    signal: {
+      label: 'CPU load',
+      tone: 'warn',
+      targetRps: 20,
+      crossesLimit: false,
+      expectation: 'Expect saturation: queue growth, rising p95, CPU throttling'
+    }
+  },
 ];
 
 module.exports = scenarios;
