@@ -108,15 +108,15 @@ const scenarios = [
     id: 'login-storm',
     name: 'Login storm',
     script: 'login-storm.js',
-    description: 'bcrypt-bound logins at a sustainable rate (~4/s). Override RPS=15 to reproduce the saturation storm.',
-    env: { RPS: '4', DURATION: '60s', USERS: '20' },
+    description: 'Real bcrypt cost: 15 logins/sec against pre-registered users.',
+    env: { RPS: '15', DURATION: '60s', USERS: '20' },
     defaultsMs: 90000,
     signal: {
       label: 'Auth load',
       tone: 'info',
-      targetRps: 4,
+      targetRps: 15,
       crossesLimit: false,
-      expectation: 'Clean run at bcrypt capacity; RPS=15 recreates the storm (timeouts + health-gate rejections)'
+      expectation: 'bcrypt-bound login latency'
     }
   },
   {
